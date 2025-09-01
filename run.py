@@ -1,28 +1,27 @@
 import os, json, requests, uuid
-from flask import (
-    Flask, send_from_directory, request, session,
-    redirect, render_template_string, send_file
-)
+from flask import Flask, send_from_directory, request, session, redirect, render_template_string, send_file
 from werkzeug.utils import secure_filename
 from flask_mail import Mail, Message
 
-app = Flask(__name__)
-app.secret_key = "super-secret-key"   # change for production!
+# ------------------ Flask App ------------------
+app = Flask(__name__, static_folder="static")
+app.secret_key = "super-secret-key"  # CHANGE THIS IN PRODUCTION
 
-# 🔑 Paystack Keys
-PAYSTACK_SECRET_KEY = "sk_test_xxxxx"   # replace with your real secret key
+# ------------------ Paystack Config ------------------
+PAYSTACK_SECRET_KEY = "sk_test_xxxxx"  # Replace with your real key
 
-# --- Email Config (Gmail SMTP example) ---
-app.config["MAIL_SERVER"] = "smtp.gmail.com"
-app.config["MAIL_PORT"] = 587
-app.config["MAIL_USE_TLS"] = True
-app.config["MAIL_USERNAME"] = "yourgmail@gmail.com"   # replace
-app.config["MAIL_PASSWORD"] = "your-app-password"     # Gmail app password
-app.config["MAIL_DEFAULT_SENDER"] = ("Ultimate Comics", "yourgmail@gmail.com")
-
+# ------------------ Mail Config ------------------
+app.config.update(
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_PORT=587,
+    MAIL_USE_TLS=True,
+    MAIL_USERNAME="yourgmail@gmail.com",
+    MAIL_PASSWORD="your-app-password",
+    MAIL_DEFAULT_SENDER=("Ultimate Comics", "yourgmail@gmail.com")
+)
 mail = Mail(app)
 
-# --- Users stored in JSON ---
+# ------------------ Users JSON ------------------
 USERS_FILE = "users.json"
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w") as f:
@@ -36,18 +35,27 @@ def save_users(users):
     with open(USERS_FILE, "w") as f:
         json.dump(users, f, indent=2)
 
+# ------------------ Current Folder ------------------
+CURRENT_FOLDER = os.getcwd()  # this is your C.HTML folder
 
-# --- Serve static pages ---
+# ------------------ Routes ------------------
 @app.route("/")
-def home():
-    return send_from_directory("pages", "main.html")
+def root():
+    return send_from_directory(CURRENT_FOLDER, "intro.html")
+
+@app.route("/MAIN.HTML")
+def main():
+    return send_from_directory(CURRENT_FOLDER, "MAIN.HTML")
 
 @app.route("/<path:filename>")
-def static_pages(filename):
-    return send_from_directory("pages", filename)
+def pages_route(filename):
+    # Serve any HTML or static file in the current folder
+    file_path = os.path.join(CURRENT_FOLDER, filename)
+    if os.path.exists(file_path):
+        return send_from_directory(CURRENT_FOLDER, filename)
+    return "File not found", 404
 
-
-# --- Signup with Paystack + Email Verification ---
+# ------------------ Signup ------------------
 @app.route("/signup", methods=["POST"])
 def signup():
     data = request.get_json()
@@ -56,6 +64,9 @@ def signup():
     email = data.get("email")
     reference = data.get("ref")
 
+    if not all([username, password, email, reference]):
+        return "Missing fields", 400
+
     users = load_users()
     if username in users:
         return "User already exists", 400
@@ -63,33 +74,30 @@ def signup():
     # Verify Paystack payment
     url = f"https://api.paystack.co/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-    response = requests.get(url, headers=headers).json()
+    try:
+        response = requests.get(url, headers=headers).json()
+    except Exception as e:
+        return f"Error verifying payment: {e}", 500
 
-    if not response["status"] or response["data"]["status"] != "success":
+    if not response.get("status") or response["data"]["status"] != "success":
         return "Payment verification failed", 403
 
-    # Generate verification token
+    # Save user with verification token
     token = str(uuid.uuid4())
-
-    # Save user (unverified)
-    users[username] = {
-        "password": password,
-        "email": email,
-        "verified": False,
-        "token": token
-    }
+    users[username] = {"password": password, "email": email, "verified": False, "token": token}
     save_users(users)
 
-    # Send verification email
     verify_url = f"http://127.0.0.1:5000/verify/{token}"
     msg = Message("Verify your account", recipients=[email])
-    msg.body = f"Hello {username},\n\nPlease click this link to verify your account:\n{verify_url}\n\nThanks!"
-    mail.send(msg)
+    msg.body = f"Hello {username},\nPlease verify your account: {verify_url}"
+    try:
+        mail.send(msg)
+    except Exception as e:
+        return f"Error sending email: {e}", 500
 
-    return "Account created. Please check your email to verify."
+    return "Account created. Check your email to verify."
 
-
-# --- Email Verification ---
+# ------------------ Verify Email ------------------
 @app.route("/verify/<token>")
 def verify_email(token):
     users = load_users()
@@ -97,23 +105,21 @@ def verify_email(token):
         if info.get("token") == token:
             users[username]["verified"] = True
             save_users(users)
-            return f"✅ {username}, your email has been verified! You can now <a href='/signin.html'>login</a>."
+            return f"✅ {username}, your email verified! <a href='/signin.html'>Login</a>"
     return "Invalid or expired token", 400
 
-
-# --- Login / Logout ---
-@app.route("/login", methods=["POST"])
+# ------------------ Login / Logout ------------------
+@app.route("/signin", methods=["POST"])
 def login():
     data = request.form
     username = data.get("username")
     password = data.get("password")
-
     users = load_users()
     if username in users and users[username]["password"] == password:
         if not users[username]["verified"]:
-            return "Please verify your email first.", 403
+            return "Please verify your email first", 403
         session["user"] = username
-        return redirect("/bookshop.html")
+        return redirect("/book.html")
     return "Invalid credentials", 401
 
 @app.route("/logout")
@@ -121,110 +127,98 @@ def logout():
     session.pop("user", None)
     return redirect("/signin.html")
 
-
-# --- Books JSON ---
+# ------------------ Books ------------------
 @app.route("/get-books")
 def get_books():
-    return send_from_directory("static", "books.json")
+    return send_from_directory(os.path.join(CURRENT_FOLDER, "static"), "books.json")
 
-
-# --- Secure Download ---
 @app.route("/download/<int:book_id>")
 def download_book(book_id):
     reference = request.args.get("ref")
     if not reference:
         return "Missing payment reference", 400
 
-    # Verify Paystack
     url = f"https://api.paystack.co/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-    response = requests.get(url, headers=headers).json()
+    try:
+        response = requests.get(url, headers=headers).json()
+    except Exception as e:
+        return f"Error verifying payment: {e}", 500
 
-    if response["status"] and response["data"]["status"] == "success":
-        with open("static/books.json") as f:
+    if response.get("status") and response["data"]["status"] == "success":
+        with open(os.path.join(CURRENT_FOLDER, "static", "books.json")) as f:
             books = json.load(f)
         book = next((b for b in books if b["id"] == book_id), None)
         if book:
-            return send_file(f".{book['file']}", as_attachment=True)
-
+            return send_file(os.path.join(CURRENT_FOLDER, book['file']), as_attachment=True)
     return "Payment not verified", 403
 
-
-# --- Submit Book (Login + Paystack required) ---
-UPLOAD_FOLDER = "protected"
-COVER_FOLDER = "static/covers"
+# ------------------ Submit Book ------------------
+UPLOAD_FOLDER = os.path.join(CURRENT_FOLDER, "protected")
+COVER_FOLDER = os.path.join(CURRENT_FOLDER, "static", "covers")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(COVER_FOLDER, exist_ok=True)
 
 @app.route("/submit-book", methods=["POST"])
 def submit_book():
     if "user" not in session:
-        return "You must be logged in to submit books", 403
+        return "Login required", 403
 
     reference = request.form.get("ref")
     title = request.form.get("title")
     price = int(request.form.get("price", 0))
     file = request.files.get("file")
     cover = request.files.get("cover")
-
-    if not reference or not file or not cover or not title:
+    if not all([reference, title, file, cover]):
         return "Missing fields", 400
 
-    # Verify Paystack
     url = f"https://api.paystack.co/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
     response = requests.get(url, headers=headers).json()
-
-    if response["status"] and response["data"]["status"] == "success":
-        # Save cover
-        cover_filename = secure_filename(cover.filename)
-        cover_path = os.path.join(COVER_FOLDER, cover_filename)
-        cover.save(cover_path)
-
-        # Save book as PDF
-        book_filename = secure_filename(file.filename)
-        if not book_filename.endswith(".pdf"):
-            book_filename += ".pdf"
-        book_path = os.path.join(UPLOAD_FOLDER, book_filename)
-        file.save(book_path)
-
-        # Update books.json
-        with open("static/books.json") as f:
-            books = json.load(f)
-        new_id = max([b["id"] for b in books]) + 1 if books else 1
-        books.append({
-            "id": new_id,
-            "title": title,
-            "price": price,
-            "cover": f"/static/covers/{cover_filename}",
-            "file": f"/protected/{book_filename}"
-        })
-        with open("static/books.json", "w") as f:
-            json.dump(books, f, indent=2)
-
-        return redirect("/bookshop.html")
-    else:
+    if not (response.get("status") and response["data"]["status"] == "success"):
         return "Payment verification failed", 403
 
+    cover_path = os.path.join(COVER_FOLDER, secure_filename(cover.filename))
+    cover.save(cover_path)
+    book_filename = secure_filename(file.filename)
+    if not book_filename.endswith(".pdf"):
+        book_filename += ".pdf"
+    book_path = os.path.join(UPLOAD_FOLDER, book_filename)
+    file.save(book_path)
 
-# --- Dynamic Bookshop with Submit Button ---
-@app.route("/bookshop.html")
+    books_file = os.path.join(CURRENT_FOLDER, "static", "books.json")
+    with open(books_file) as f:
+        books = json.load(f)
+    new_id = max([b["id"] for b in books], default=0) + 1
+    books.append({
+        "id": new_id,
+        "title": title,
+        "price": price,
+        "cover": f"/static/covers/{secure_filename(cover.filename)}",
+        "file": f"/protected/{book_filename}"
+    })
+    with open(books_file, "w") as f:
+        json.dump(books, f, indent=2)
+    return redirect("/book.html")
+
+# ------------------ Dynamic Book Page ------------------
+@app.route("/book.html")
 def bookshop_page():
-    with open("pages/bookshop.html") as f:
+    file_path = os.path.join(CURRENT_FOLDER, "book.html")
+    if not os.path.exists(file_path):
+        return "File not found", 404
+    with open(file_path) as f:
         html = f.read()
 
     if "user" in session:
-        submit_button = f'<a href="/submit.html" style="margin-left:20px; color:orange; font-weight:bold;">📚 Submit Book</a> | <a href="/logout" style="color:red;">Logout</a>'
+        submit_button = '<a href="/submit.html" style="margin-left:20px;color:orange;font-weight:bold;">📚 Submit Book</a> | <a href="/logout" style="color:red;">Logout</a>'
     else:
-        submit_button = '<a href="/signin.html" style="margin-left:20px; color:orange; font-weight:bold;">🔑 Login to Submit</a>'
-
-    # inject button before </body>
+        submit_button = '<a href="/signin.html" style="margin-left:20px;color:orange;font-weight:bold;">🔑 Login to Submit</a>'
     html = html.replace("</body>", f"{submit_button}</body>")
     return render_template_string(html)
 
-
+# ------------------ Run App ------------------
 if __name__ == "__main__":
-    os.makedirs("pages", exist_ok=True)
-    os.makedirs("static/covers", exist_ok=True)
-    os.makedirs("protected", exist_ok=True)
+    os.makedirs(os.path.join(CURRENT_FOLDER, "static", "covers"), exist_ok=True)
+    os.makedirs(os.path.join(CURRENT_FOLDER, "protected"), exist_ok=True)
     app.run(debug=True, port=5000)

@@ -34,7 +34,6 @@
       animation: bounce 2s infinite linear;
     }
 
-    /* Animations */
     @keyframes bounce {
       0%, 100% { transform: translateY(0); }
       40% { transform: translateY(-20px); }
@@ -83,6 +82,7 @@
       border-radius: 5px;
       cursor: pointer;
       font-size: 14px;
+      margin-top: 10px;
     }
     .buy-btn:hover {
       background: darkred;
@@ -103,7 +103,7 @@
   <script src="https://js.paystack.co/v1/inline.js"></script>
 
   <script>
-    // Load books from JSON file
+    // Load books from JSON
     fetch("/static/books.json")
       .then(res => res.json())
       .then(books => {
@@ -116,8 +116,8 @@
           card.innerHTML = `
             <img src="${book.cover}" alt="${book.title}">
             <div class="book-title">${book.title}</div>
-            <div class="book-price">₦${book.price}</div>
-            <button class="buy-btn" onclick="payWithPaystack(${book.id}, '${book.title}', ${book.price}, '${book.file}')">
+            <div class="book-price">₦${book.price.toLocaleString()}</div>
+            <button class="buy-btn" onclick="payWithPaystack('${book.title}', ${book.price}, '${book.file}')">
               Buy Now
             </button>
           `;
@@ -128,22 +128,22 @@
       .catch(err => console.error('Error loading books:', err));
 
     // Paystack payment
-    function payWithPaystack(id, title, amount, file) {
+    function payWithPaystack(title, amount, file) {
       var handler = PaystackPop.setup({
-        key: "YOUR_PUBLIC_KEY", // replace with your Paystack public key
+        key: "YOUR_PUBLIC_KEY", // 🔑 Replace with your Paystack public key
         email: "customer@email.com", 
-        amount: amount * 100, // kobo
+        amount: amount * 100, // Paystack uses kobo
         currency: "NGN",
         callback: function(response){
           alert("Payment complete! Reference: " + response.reference);
-          // Trigger download (PDF only)
+          // Allow book download (must be PDF)
           window.location.href = file;
         },
         onClose: function(){
           alert("Transaction was not completed, window closed.");
         }
       });
-      handler.openIframe();
+    
     }
   </script>
 </body>
