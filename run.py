@@ -5,19 +5,19 @@ from flask_mail import Mail, Message
 
 # ------------------ Flask App ------------------
 app = Flask(__name__, static_folder="static")
-app.secret_key = "super-secret-key"  # CHANGE THIS IN PRODUCTION
+app.secret_key = "super-secret-key"  # CHANGE IN PRODUCTION
 
 # ------------------ Paystack Config ------------------
-PAYSTACK_SECRET_KEY = "sk_test_xxxxx"  # Replace with your real key
+PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "sk_test_xxxxx")  # use env in production
 
 # ------------------ Mail Config ------------------
 app.config.update(
     MAIL_SERVER="smtp.gmail.com",
     MAIL_PORT=587,
     MAIL_USE_TLS=True,
-    MAIL_USERNAME="yourgmail@gmail.com",
-    MAIL_PASSWORD="your-app-password",
-    MAIL_DEFAULT_SENDER=("Ultimate Comics", "yourgmail@gmail.com")
+    MAIL_USERNAME=os.environ.get("MAIL_USERNAME", "yourgmail@gmail.com"),
+    MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD", "your-app-password"),
+    MAIL_DEFAULT_SENDER=("Ultimate Comics", os.environ.get("MAIL_USERNAME", "yourgmail@gmail.com"))
 )
 mail = Mail(app)
 
@@ -36,7 +36,7 @@ def save_users(users):
         json.dump(users, f, indent=2)
 
 # ------------------ Current Folder ------------------
-CURRENT_FOLDER = os.getcwd()  # this is your C.HTML folder
+CURRENT_FOLDER = os.getcwd()  # C.HTML folder
 
 # ------------------ Routes ------------------
 @app.route("/")
@@ -49,15 +49,14 @@ def main():
 
 @app.route("/<path:filename>")
 def pages_route(filename):
-    # Serve any HTML or static file in the current folder
     file_path = os.path.join(CURRENT_FOLDER, filename)
     if os.path.exists(file_path):
         return send_from_directory(CURRENT_FOLDER, filename)
     return "File not found", 404
 
 # ------------------ Signup ------------------
-@app.route("/signup", methods=["POST"])
-def signup():
+@app.route("/create.html", methods=["POST"])
+def create():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
@@ -74,10 +73,7 @@ def signup():
     # Verify Paystack payment
     url = f"https://api.paystack.co/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-    try:
-        response = requests.get(url, headers=headers).json()
-    except Exception as e:
-        return f"Error verifying payment: {e}", 500
+    response = requests.get(url, headers=headers).json()
 
     if not response.get("status") or response["data"]["status"] != "success":
         return "Payment verification failed", 403
@@ -90,10 +86,7 @@ def signup():
     verify_url = f"http://127.0.0.1:5000/verify/{token}"
     msg = Message("Verify your account", recipients=[email])
     msg.body = f"Hello {username},\nPlease verify your account: {verify_url}"
-    try:
-        mail.send(msg)
-    except Exception as e:
-        return f"Error sending email: {e}", 500
+    mail.send(msg)
 
     return "Account created. Check your email to verify."
 
@@ -127,11 +120,12 @@ def logout():
     session.pop("user", None)
     return redirect("/signin.html")
 
-# ------------------ Books ------------------
+# ------------------ Books JSON ------------------
 @app.route("/get-books")
 def get_books():
     return send_from_directory(os.path.join(CURRENT_FOLDER, "static"), "books.json")
 
+# ------------------ Secure Book Download ------------------
 @app.route("/download/<int:book_id>")
 def download_book(book_id):
     reference = request.args.get("ref")
@@ -140,10 +134,7 @@ def download_book(book_id):
 
     url = f"https://api.paystack.co/transaction/verify/{reference}"
     headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
-    try:
-        response = requests.get(url, headers=headers).json()
-    except Exception as e:
-        return f"Error verifying payment: {e}", 500
+    response = requests.get(url, headers=headers).json()
 
     if response.get("status") and response["data"]["status"] == "success":
         with open(os.path.join(CURRENT_FOLDER, "static", "books.json")) as f:
@@ -151,9 +142,10 @@ def download_book(book_id):
         book = next((b for b in books if b["id"] == book_id), None)
         if book:
             return send_file(os.path.join(CURRENT_FOLDER, book['file']), as_attachment=True)
+
     return "Payment not verified", 403
 
-# ------------------ Submit Book ------------------
+# ------------------ Book Submission ------------------
 UPLOAD_FOLDER = os.path.join(CURRENT_FOLDER, "protected")
 COVER_FOLDER = os.path.join(CURRENT_FOLDER, "static", "covers")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -200,6 +192,54 @@ def submit_book():
     with open(books_file, "w") as f:
         json.dump(books, f, indent=2)
     return redirect("/book.html")
+
+# ------------------ Book Purchase Flow ------------------
+@app.route("/buy/<int:book_id>", methods=["POST"])
+def buy_book(book_id):
+    users = load_users()
+    if "user" not in session:
+        return "Login required", 403
+
+    with open(os.path.join(CURRENT_FOLDER, "static", "books.json")) as f:
+        books = json.load(f)
+    book = next((b for b in books if b["id"] == book_id), None)
+    if not book:
+        return "Book not found", 404
+
+    # Initialize Paystack payment
+    url = "https://api.paystack.co/transaction/initialize"
+    headers = {
+        "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "email": users[session["user"]]["email"],
+        "amount": book["price"] * 100,  # kobo
+        "callback_url": f"http://127.0.0.1:5000/verify-payment/{book_id}",
+        "metadata": {"book_id": book_id, "username": session["user"]}
+    }
+    response = requests.post(url, headers=headers, json=payload).json()
+    if response.get("status"):
+        return {"payment_url": response["data"]["authorization_url"]}
+    return "Payment initialization failed", 500
+
+@app.route("/verify-payment/<int:book_id>")
+def verify_payment(book_id):
+    reference = request.args.get("reference")
+    if not reference:
+        return "Missing reference", 400
+
+    url = f"https://api.paystack.co/transaction/verify/{reference}"
+    headers = {"Authorization": f"Bearer {PAYSTACK_SECRET_KEY}"}
+    response = requests.get(url, headers=headers).json()
+
+    if response.get("status") and response["data"]["status"] == "success":
+        with open(os.path.join(CURRENT_FOLDER, "static", "books.json")) as f:
+            books = json.load(f)
+        book = next((b for b in books if b["id"] == book_id), None)
+        if book:
+            return redirect(book["file"])
+    return "Payment failed", 403
 
 # ------------------ Dynamic Book Page ------------------
 @app.route("/book.html")

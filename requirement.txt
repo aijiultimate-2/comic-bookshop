@@ -1,0 +1,5 @@
+Flask==2.3.5
+requests==2.32.0
+Werkzeug==2.3.6
+Flask-Mail==0.9.1
+gunicorn==21.2.0
