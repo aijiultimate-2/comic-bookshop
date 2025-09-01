@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚪BOOKSHOP</title>
+
+  <style>
+    body {
+      background-color: black;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: beige;
+    }
+
+    /* Navbar */
+    .nav-bar {
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: fixed;
+      background-color: rgba(0,0,0,0.7);
+      left: 0;
+      right: 0;
+      top: 0;
+      padding: 0 20px;
+      z-index: 10;
+    }
+    
+    .title {
+      font-size: 28px;
+      font-weight: bold;
+      animation: bounce 2s infinite linear;
+    }
+
+    /* Animations */
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-20px); }
+      60% { transform: translateY(-10px); }
+    }
+
+    /* Bookshop container */
+    .bookshop {
+      margin-top: 90px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      padding: 20px;
+    }
+    .book-card {
+      background: #111;
+      border: 2px solid #444;
+      border-radius: 10px;
+      padding: 15px;
+      width: 280px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    .book-card img {
+      width: 100%;
+      height: 350px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .book-title {
+      margin: 10px 0;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .book-price {
+      margin: 5px 0;
+      font-size: 16px;
+      color: lightgreen;
+    }
+    .buy-btn {
+      background: crimson;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .buy-btn:hover {
+      background: darkred;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <div class="nav-bar">
+    <h1 class="title">🚪BOOKSHOP</h1>
+  </div>
+
+  <!-- Book container -->
+  <div class="bookshop" id="bookContainer"></div>
+
+  <!-- Paystack -->
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+
+  <script>
+    // Load books from JSON file
+    fetch("/static/books.json")
+      .then(res => res.json())
+      .then(books => {
+        const bookContainer = document.getElementById('bookContainer');
+
+        books.forEach(book => {
+          const card = document.createElement('div');
+          card.classList.add('book-card');
+
+          card.innerHTML = `
+            <img src="${book.cover}" alt="${book.title}">
+            <div class="book-title">${book.title}</div>
+            <div class="book-price">₦${book.price}</div>
+            <button class="buy-btn" onclick="payWithPaystack(${book.id}, '${book.title}', ${book.price}, '${book.file}')">
+              Buy Now
+            </button>
+          `;
+
+          bookContainer.appendChild(card);
+        });
+      })
+      .catch(err => console.error('Error loading books:', err));
+
+    // Paystack payment
+    function payWithPaystack(id, title, amount, file) {
+      var handler = PaystackPop.setup({
+        key: "YOUR_PUBLIC_KEY", // replace with your Paystack public key
+        email: "customer@email.com", 
+        amount: amount * 100, // kobo
+        currency: "NGN",
+        callback: function(response){
+          alert("Payment complete! Reference: " + response.reference);
+          // Trigger download (PDF only)
+          window.location.href = file;
+        },
+        onClose: function(){
+          alert("Transaction was not completed, window closed.");
+        }
+      });
+      handler.openIframe();
+    }
+  </script>
+</body>
+</html>

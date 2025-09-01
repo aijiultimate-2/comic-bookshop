@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "Comic Book Vol 1",
+    "price": 2500,
+    "cover": "/static/covers/book1.jpg",
+    "file": "/protected/book1.pdf"
+  },
+  {
+    "id": 2,
+    "title": "Adventure Tales",
+    "price": 3000,
+    "cover": "/static/covers/book2.jpg",
+    "file": "/protected/book2.pdf"
+  }
+]

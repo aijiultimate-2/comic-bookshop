@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payment Successful</title>
+  <style>
+    body {
+      background: black;
+      color: white;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+    input {
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      width: 280px;
+      margin: 10px 0;
+    }
+    button {
+      background: #e25f2b;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #c74120;
+    }
+  </style>
+</head>
+<body>
+  <h1>✅ Payment successful!</h1>
+  <p>To view your uploaded book , enter the same email you used to pay and click <b>Go to 🚪BOOKSHOP</b>.</p>
+
+  <input id="email" type="email" placeholder="you@example.com" required>
+  <br>
+  <button id="set">🚪BOOKSHOP</button>
+
+  <script>
+    document.getElementById('set').addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      if (!email) {
+        alert('Please enter your email');
+        return;
+      }
+      try {
+        const res = await fetch('/set_email', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ email }) 
+        });
+        if (res.ok) {
+          // ✅ Redirect to Flask route, not raw HTML file
+          window.location.href = "vdx.html";
+        } else {
+          alert('Error verifying your email, please try again.');
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+      }
+    });
+  </script>
+</body>
+</html>

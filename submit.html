@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Submit Book - Comic Bookshop</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background-color: #1f1c1c;
+      color: beige;
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .container {
+      max-width: 500px;
+      margin: 40px auto;
+      padding: 24px;
+      background: #222;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px #0008;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 24px;
+      color: #e2372b;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 18px;
+      border-radius: 8px;
+      border: 1px solid #e26e2b;
+      background: #1f1d1c;
+      color: beige;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+      max-height: 200px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #e25f2b;
+      color: beige;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #c7521c; }
+    .message {
+      text-align: center;
+      margin-bottom: 12px;
+      font-size: 1rem;
+      color: #f66;
+    }
+    @media (max-width: 600px) {
+      .container { max-width: 98vw; padding: 10px; }
+      input, button, textarea { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Submit a Book</h2>
+    <div class="message" id="message"></div>
+    <form id="bookForm" autocomplete="off" method="POST" 
+          action="{{ url_for('submit_book_post') }}" 
+          enctype="multipart/form-data">
+
+      <label for="title">Book Title</label>
+      <input type="text" id="title" name="title" placeholder="Enter Book title" required>
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" placeholder="Enter Book description" required></textarea>
+
+      <label for="price">Price ($)</label>
+      <input type="number" id="price" name="price" placeholder="Enter Price in Dollar" required>
+
+      <label for="book">Book File (PDF)</label>
+      <input type="file" id="book" name="book" accept="application/pdf" required>
+
+      <button type="submit">Upload Book 🚪</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('bookForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const message = document.getElementById('message');
+      message.textContent = '';
+
+      const formData = new FormData(this);
+
+      try {
+        const res = await fetch('{{ url_for("submit_book_post") }}', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          message.style.color = '#4f4';
+          message.textContent = 'Book uploaded successfully! Redirecting...';
+          setTimeout(() => window.location.href = "success.html", 1200);
+        } else {
+          message.style.color = '#f66';
+          message.textContent = data.msg || 'Book upload failed.';
+        }
+      } catch (err) {
+        message.style.color = '#f66';
+        message.textContent = 'Network error. Please try again.';
+      }
+    });
+  </script>
+</body>
+</html>
