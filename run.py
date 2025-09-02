@@ -91,7 +91,7 @@ def create():
     return "Account created. Check your email to verify."
 
 # ------------------ Verify Email ------------------
-@app.route("/verify/<token>")
+@app.route("/success.html")
 def verify_email(token):
     users = load_users()
     for username, info in users.items():
@@ -151,7 +151,7 @@ COVER_FOLDER = os.path.join(CURRENT_FOLDER, "static", "covers")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(COVER_FOLDER, exist_ok=True)
 
-@app.route("/submit-book", methods=["POST"])
+@app.route("/submit.html", methods=["POST"])
 def submit_book():
     if "user" not in session:
         return "Login required", 403
