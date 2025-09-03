@@ -49,7 +49,7 @@
       const message = document.getElementById('message');
       message.textContent = '';
       try {
-        const res = await fetch("{{ url_for('create') }}", {
+        const res = await fetch("{{ url_for('create.html') }}", {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ username, email, password })
