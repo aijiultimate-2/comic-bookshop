@@ -3,17 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> Payment</title>
+    <title>Payment</title>
     <style>
-        /* Global Styles */
         body {
             margin: 0;
             font-family: 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, #1a1a1a, #2e2e2e);
             color: #f5f5f5;
         }
-
-        /* Sidebar */
         .sidebar {
             background-color: #111;
             position: fixed;
@@ -25,9 +22,7 @@
             transition: left 0.4s ease;
             box-shadow: 4px 0 10px rgba(0,0,0,0.5);
         }
-        .sidebar.show {
-            left: 0;
-        }
+        .sidebar.show { left: 0; }
         .sidebar a {
             display: flex;
             align-items: center;
@@ -36,14 +31,8 @@
             color: #ccc;
             text-decoration: none;
             font-size: 16px;
-            transition: background 0.3s, color 0.3s;
         }
-        .sidebar a:hover {
-            background-color: #e2d02b;
-            color: #fff;
-        }
-
-        /* Toggle button */
+        .sidebar a:hover { background-color: #e2d02b; color: #fff; }
         .toggle-btn {
             position: fixed;
             top: 20px;
@@ -58,11 +47,7 @@
             box-shadow: 3px 3px 8px rgba(0,0,0,0.4);
             z-index: 1000;
         }
-        .toggle-btn:hover {
-            opacity: 0.9;
-        }
-
-        /* Main container */
+        .toggle-btn:hover { opacity: 0.9; }
         .container {
             max-width: 600px;
             margin: 120px auto;
@@ -72,17 +57,7 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             text-align: center;
         }
-        h1 {
-            font-weight: 500;
-            margin-bottom: 30px;
-            color: #fff;
-        }
-
-        /* Form elements */
-        label {
-            font-size: 14px;
-            color: #bbb;
-        }
+        h1 { font-weight: 500; margin-bottom: 30px; color: #fff; }
         .duration-select {
             font-size: 16px;
             padding: 10px;
@@ -93,22 +68,9 @@
             background-color: #2a2a2a;
             color: #fff;
         }
-        .duration-select:focus {
-            outline: none;
-            border-color: #e2742b;
-        }
-
-        /* Price display */
-        #price-display {
-            font-size: 18px;
-            margin: 15px 0;
-            font-weight: bold;
-            color: #e2652b;
-        }
-
-        /* Submit button */
+        #price-display { font-size: 18px; margin: 15px 0; font-weight: bold; color: #e2652b; }
         .submit-button {
-            background: linear-gradient(90deg, rgb(255, 123, 0), rgb(255, 123, 0));
+            background: linear-gradient(90deg, #ff7b00, #ff7b00);
             color: #fff;
             font-weight: bold;
             font-size: 16px;
@@ -116,9 +78,9 @@
             border-radius: 10px;
             padding: 12px 25px;
             cursor: pointer;
+            width: 100%;
             box-shadow: 3px 3px 8px rgba(0,0,0,0.3);
             transition: transform 0.3s, background 0.3s;
-            width: 100%;
         }
         .submit-button:hover {
             transform: translateY(-3px);
@@ -127,22 +89,16 @@
     </style>
 </head>
 <body>
-
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-        
         <a href="MAIN.HTML">🏠HOME</a>
         <a href="create.html">🎥CREATE AN ACCOUNT</a>
         <a href="book.html">🚪BOOKSHOP</a>
     </div>
-
-    <!-- Toggle Button -->
     <button class="toggle-btn" onclick="toggleSidebar()">Menu</button>
 
-    <!-- Main Content -->
     <div class="container">
         <h1>Secure Payment</h1>
-        <form id="payment-form" action="{{ url_for('charge') }}" method="post">
+        <form id="payment-form" action="pay.html" method="get">
             <label for="duration">Select Duration:</label>
             <select class="duration-select" id="duration" name="duration">
                 <option value="6-months">6 Months - $5.5 USD</option>
@@ -160,20 +116,17 @@
     </div>
 
     <script>
-        // Sidebar toggle
         function toggleSidebar() {
             document.getElementById("sidebar").classList.toggle("show");
         }
 
-        // Price change logic
         const durationSelect = document.getElementById("duration");
         const priceDisplay = document.getElementById("price-display");
 
         durationSelect.addEventListener("change", () => {
-            let price = (durationSelect.value === "6-months") ? 10 : 5.5;
+            let price = (durationSelect.value === "6-months") ? 5.5 : 10;
             priceDisplay.textContent = `Price: $${price} USD`;
         });
     </script>
-
 </body>
 </html>

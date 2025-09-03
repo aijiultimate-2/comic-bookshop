@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🚪BOOKSHOP</title>
-
+  <title>📚BOOKSHOP</title>
   <style>
     body {
       background-color: black;
@@ -94,6 +93,7 @@
   <!-- Navbar -->
   <div class="nav-bar">
     <h1 class="title">📚BOOKSHOP</h1>
+    <div id="userLinks"></div>
   </div>
 
   <!-- Book container -->
@@ -103,48 +103,48 @@
   <script src="https://js.paystack.co/v1/inline.js"></script>
 
   <script>
-    // Load books from JSON
-    fetch("/static/books.json")
-      .then(res => res.json())
-      .then(books => {
-        const bookContainer = document.getElementById('bookContainer');
-
-        books.forEach(book => {
-          const card = document.createElement('div');
-          card.classList.add('book-card');
-
-          card.innerHTML = `
-            <img src="${book.cover}" alt="${book.title}">
-            <div class="book-title">${book.title}</div>
-            <div class="book-price">₦${book.price.toLocaleString()}</div>
-            <button class="buy-btn" onclick="payWithPaystack('${book.title}', ${book.price}, '${book.file}')">
-              Buy Now
-            </button>
-          `;
-
-          bookContainer.appendChild(card);
-        });
-      })
-      .catch(err => console.error('Error loading books:', err));
-
-    // Paystack payment
-    function payWithPaystack(title, amount, file) {
-      var handler = PaystackPop.setup({
-        key: "YOUR_PUBLIC_KEY", // 🔑 Replace with your Paystack public key
-        email: "customer@email.com", 
-        amount: amount * 100, // Paystack uses kobo
-        currency: "NGN",
-        callback: function(response){
-          alert("Payment complete! Reference: " + response.reference);
-          // Allow book download (must be PDF)
-          window.location.href = file;
-        },
-        onClose: function(){
-          alert("Transaction was not completed, window closed.");
-        }
-      });
     
+function payWithPaystack(title, amount, file) {
+  var handler = PaystackPop.setup({
+    key: "YOUR_PUBLIC_KEY", // Replace with your Paystack public key
+    email: "customer@email.com", // You can use session email dynamically
+    amount: amount * 100, // Kobo
+    currency: "NGN",
+    callback: async function(response) {
+      // Send reference to Flask for verification
+      try {
+        const res = await fetch("/buy_book", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference: response.reference, file: file })
+        });
+
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = file.split("/").pop();
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } else {
+          const data = await res.json();
+          alert("Payment verification failed: " + data.msg);
+        }
+      } catch (err) {
+        alert("Error verifying payment: " + err);
+      }
+    },
+    onClose: function() {
+      alert("Transaction was not completed, window closed.");
     }
+  });
+  
+}
+
+
   </script>
+
 </body>
 </html>

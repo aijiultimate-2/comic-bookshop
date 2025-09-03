@@ -126,9 +126,15 @@
     form.addEventListener('submit', function(e) {
       e.preventDefault();
 
-      const name = document.getElementById('name').value;
-      const email = document.getElementById('email').value;
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
       const amount = parseFloat(document.getElementById('amount').value);
+
+      if (!name || !email) {
+        message.textContent = "Please enter all details.";
+        message.style.color = "#f66";
+        return;
+      }
 
       if (isNaN(amount) || amount <= 0) {
         message.textContent = "Please enter a valid amount.";
@@ -143,15 +149,11 @@
         key: "pk_test_YOUR_PUBLIC_KEY", // replace with your Paystack public key
         email: email,
         amount: Math.round(amount * 100), // Paystack uses kobo/cents
-        currency: "USD", // 👈 Important: set currency to USD
-        ref: "PGU-" + Math.floor((Math.random() * 1000000000) + 1), // unique ref
+        currency: "USD",
+        ref: "PGU-" + Math.floor(Math.random() * 1000000000 + 1),
         metadata: {
           custom_fields: [
-            {
-              display_name: "Name",
-              variable_name: "name",
-              value: name
-            }
+            { display_name: "Name", variable_name: "name", value: name }
           ]
         },
         callback: function(response) {
