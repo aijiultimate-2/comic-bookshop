@@ -5,79 +5,23 @@
   <title>Submit Book - Comic Bookshop</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      background-color: #1f1c1c;
-      color: beige;
-      margin: 0;
-      font-family: 'Segoe UI', Arial, sans-serif;
-    }
-    .container {
-      max-width: 500px;
-      margin: 40px auto;
-      padding: 24px;
-      background: #222;
-      border-radius: 16px;
-      box-shadow: 0 4px 24px #0008;
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 24px;
-      color: #e2372b;
-    }
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: bold;
-    }
-    input, textarea {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 18px;
-      border-radius: 8px;
-      border: 1px solid #e26e2b;
-      background: #1f1d1c;
-      color: beige;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-    textarea {
-      resize: vertical;
-      min-height: 60px;
-      max-height: 200px;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      background: #e25f2b;
-      color: beige;
-      border: none;
-      border-radius: 8px;
-      font-size: 1.1rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
+    body { background-color: #1f1c1c; color: beige; margin: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+    .container { max-width: 500px; margin: 40px auto; padding: 24px; background: #222; border-radius: 16px; box-shadow: 0 4px 24px #0008; }
+    h2 { text-align: center; margin-bottom: 24px; color: #e2372b; }
+    label { display: block; margin-bottom: 6px; font-weight: bold; }
+    input, textarea { width: 100%; padding: 12px; margin-bottom: 18px; border-radius: 8px; border: 1px solid #e26e2b; background: #1f1d1c; color: beige; font-size: 1rem; box-sizing: border-box; }
+    textarea { resize: vertical; min-height: 60px; max-height: 200px; }
+    button { width: 100%; padding: 12px; background: #e25f2b; color: beige; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
     button:hover { background: #c7521c; }
-    .message {
-      text-align: center;
-      margin-bottom: 12px;
-      font-size: 1rem;
-      color: #f66;
-    }
-    @media (max-width: 600px) {
-      .container { max-width: 98vw; padding: 10px; }
-      input, button, textarea { font-size: 1rem; }
-    }
+    .message { text-align: center; margin-bottom: 12px; font-size: 1rem; color: #f66; }
+    @media (max-width: 600px) { .container { max-width: 98vw; padding: 10px; } input, button, textarea { font-size: 1rem; } }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Submit a Book</h2>
     <div class="message" id="message"></div>
-    <form id="bookForm" autocomplete="off" method="POST" 
-          action="{{ url_for('submit_book_post') }}" 
-          enctype="multipart/form-data">
-
+    <form id="bookForm" autocomplete="off" enctype="multipart/form-data">
       <label for="title">Book Title</label>
       <input type="text" id="title" name="title" placeholder="Enter Book title" required>
 
@@ -88,7 +32,10 @@
       <input type="number" id="price" name="price" placeholder="Enter Price in Dollar" required>
 
       <label for="book">Book File (PDF)</label>
-      <input type="file" id="book" name="book" accept="application/pdf" required>
+      <input type="file" id="book" name="file" accept="application/pdf" required>
+
+      <label for="cover">Cover Image</label>
+      <input type="file" id="cover" name="cover" accept="image/*" required>
 
       <button type="submit">Upload Book 🚪</button>
     </form>
@@ -103,18 +50,19 @@
       const formData = new FormData(this);
 
       try {
-        const res = await fetch('{{ url_for("submit_book_post") }}', {
+        const res = await fetch("{{ url_for('submit_book') }}", {
           method: 'POST',
           body: formData
         });
-        const data = await res.json();
+        const data = await res.text();
+
         if (res.ok) {
           message.style.color = '#4f4';
           message.textContent = 'Book uploaded successfully! Redirecting...';
-          setTimeout(() => window.location.href = "success.html", 1200);
+          setTimeout(() => window.location.href = "{{ url_for('pages_route', filename='success.html') }}", 1200);
         } else {
           message.style.color = '#f66';
-          message.textContent = data.msg || 'Book upload failed.';
+          message.textContent = data || 'Book upload failed.';
         }
       } catch (err) {
         message.style.color = '#f66';
@@ -124,3 +72,4 @@
   </script>
 </body>
 </html>
+⚡ 
