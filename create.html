@@ -59,7 +59,7 @@
     if (res.ok) {
       message.style.color = '#4f4';
       message.textContent = 'Account created! Check email for verification.';
-      setTimeout(() => window.location.href = "/signin.html", 2000);
+      setTimeout(() => window.location.href = "/payment.html", 2000);
     } else {
       message.style.color = '#f66';
       message.textContent = data || 'Registration failed.';
